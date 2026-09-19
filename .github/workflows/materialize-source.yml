@@ -16,6 +16,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          persist-credentials: true
 
       - name: Extract source
         shell: bash
@@ -26,7 +27,18 @@ jobs:
           unzip -q rk-social-automation-mcp-complete-v2.zip -d /tmp/rk-social-src
           ROOT=/tmp/rk-social-src/rk-social-automation-mcp
           test -f "$ROOT/package.json"
-          rsync -a --delete --exclude '.git/' "$ROOT/" ./ --exclude 'rk-social-automation-mcp-complete-v2.zip'
+          rsync -a --exclude '.git/' --exclude 'rk-social-automation-mcp-complete-v2.zip' "$ROOT/" ./
+
+      - name: Validate source
+        working-directory: .
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f package.json
+          test -d src
+          test -d tests
+          node --check src/index.mjs
+          node --check src/worker.mjs
 
       - name: Commit materialized source
         shell: bash
@@ -35,7 +47,7 @@ jobs:
           git config user.name "RK Digital Automation"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -A
-          git reset -- rk-social-automation-mcp-complete-v2.zip
+          git restore --staged rk-social-automation-mcp-complete-v2.zip 2>/dev/null || true
           if git diff --cached --quiet; then
             echo "No source changes to commit."
             exit 0
